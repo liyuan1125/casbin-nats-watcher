@@ -20,12 +20,12 @@ type Watcher struct {
 
 // NewWatcher creates new Nats watcher.
 // Parameters:
-// - endpoint
-//		Endpoint of Nats server
-// - policyUpdatedSubject
-//      Nats subject that sends message when policy was updated externally. It leads to call of callback
-// - options
-//      Options to connect Nats like user, password, etc.
+//   - endpoint
+//     Endpoint of Nats server
+//   - policyUpdatedSubject
+//     Nats subject that sends message when policy was updated externally. It leads to call of callback
+//   - options
+//     Options to connect Nats like user, password, etc.
 func NewWatcher(endpoint string, policyUpdatedSubject string, options ...nats.Option) (persist.Watcher, error) {
 	nw := &Watcher{
 		endpoint:             endpoint,
@@ -37,6 +37,25 @@ func NewWatcher(endpoint string, policyUpdatedSubject string, options ...nats.Op
 	err := nw.connect()
 	if err != nil {
 		return nil, err
+	}
+
+	// Subscribe to updates
+	sub, err := nw.subcribeToUpdates()
+	if err != nil {
+		return nil, err
+	}
+	nw.subscription = sub
+
+	runtime.SetFinalizer(nw, finalizer)
+
+	return nw, nil
+}
+
+// NewWatcherWithConn creates new Nats watcher with nats conn
+func NewWatcherWithConn(conn *nats.Conn, policyUpdatedSubject string) (persist.Watcher, error) {
+	nw := &Watcher{
+		connection:           conn,
+		policyUpdatedSubject: policyUpdatedSubject,
 	}
 
 	// Subscribe to updates
